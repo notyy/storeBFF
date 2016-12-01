@@ -6,14 +6,17 @@ import org.json4s.DefaultFormats
 import org.json4s.native.Serialization._
 import org.scalatest.{FunSpec, ShouldMatchers}
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
 class ProductServiceContractSpec extends FunSpec with ShouldMatchers {
+
   import com.itv.scalapact.ScalaPactForger._
 
   implicit val formats = DefaultFormats
-  import scala.concurrent.ExecutionContext.Implicits.global
 
-  describe("ProductService provider"){
-    it("should be able to find product by name"){
+  describe("ProductService provider") {
+    it("should be able to find product by name") {
       forgePact
         .between("storeBFF")
         .and("storeProduct")
@@ -22,23 +25,22 @@ class ProductServiceContractSpec extends FunSpec with ShouldMatchers {
             .description("find product by name")
             .given("product named `router` exists")
             .uponReceiving("/product/?name=router")
-            .willRespondWith(200, write(Product("1","router")))
+            .willRespondWith(
+              status = 200,
+              headers = Map("Content-Type" -> "application/json"),
+              body = write(Product("1", "router")))
         )
         .runConsumerTest { mockConfig =>
           val productClient = new ProductClient {
-            protected override def host = mockConfig.host
+            protected override def host: String = mockConfig.host
 
-            protected override def port = mockConfig.port
+            protected override def port: Int = mockConfig.port
           }
 
-          val futureProduct =  productClient.queryProductByName("router")
-          futureProduct.onSuccess{
-            case Some(product) => {
-              product.get.id should not be empty
-              product.get.name shouldBe "router"
-            }
-            case None => fail("product named 'router' not found")
-          }
+          val optProduct = Await.result(productClient.queryProductByName("router"), 1 second)
+          optProduct should not be empty
+          optProduct.get.id should not be empty
+          optProduct.get.name shouldBe "router"
         }
     }
   }
