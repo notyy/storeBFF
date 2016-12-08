@@ -16,7 +16,7 @@ class ProductServiceContractSpec extends FunSpec with ShouldMatchers {
   implicit val formats = DefaultFormats
 
   describe("ProductService provider") {
-    describe("shold find product by name") {
+    describe("should find product by name") {
       it("should be able to find product by name if exist") {
         forgePact
           .between("storeBFF")
